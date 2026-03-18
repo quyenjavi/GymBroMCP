@@ -65,8 +65,10 @@ function isProfileLoopAssistantMessage(content: string) {
     normalized.startsWith("got it! here’s your profile") ||
     normalized.startsWith("got it! here's your profile") ||
     normalized.startsWith("got it! your info is set") ||
+    normalized.startsWith("got it! your profile is updated") ||
     normalized.includes("this info will help tailor") ||
-    normalized.includes("ready to keep pushing")
+    normalized.includes("ready to keep pushing") ||
+    normalized.includes("your info has been updated")
   );
 }
 
@@ -233,7 +235,7 @@ export async function POST(req: Request) {
             if (ins.error) throw new Error(`Failed to save user message: ${ins.error.message}`);
           }
 
-          // deterministic profile handling first
+          // deterministic profile handling
           const profileIntent = parseProfilePatch(userText);
           if (profileIntent) {
             await applyProfilePatch(admin, user.id, profileIntent.patch);
@@ -265,10 +267,10 @@ export async function POST(req: Request) {
 
           const { data: historyData } = await admin
             .from("chat_messages")
-            .select("id, role, content, created_at")
+            .select("role, content")
             .eq("thread_id", threadId)
             .order("created_at", { ascending: true })
-            .limit(30);
+            .limit(20);
 
           const filteredHistory =
             (historyData as ChatMessageRow[] | null | undefined)?.filter((m) => {
@@ -278,35 +280,27 @@ export async function POST(req: Request) {
               return true;
             }) ?? [];
 
-          const system = `
-You are Gym Bro, a real gym coach inside a private fitness coaching app.
+          const baseSystemPrompt = gymBroSystemPrompt(context);
 
-You are allowed to use, remember, and update the user's fitness profile inside this app.
-This includes:
-- name
-- weight
-- height
-- age
-- gender
-- training preferences
+          const hardRules = `
+You are inside a private fitness coaching app.
 
-This is normal app memory, not a privacy violation.
+You ARE allowed to use the user's fitness profile and workout history inside this app.
+This includes name, weight, height, age, gender, and workout logs.
 
-CRITICAL RULES:
-1. Never refuse normal profile updates.
+GLOBAL RULES:
+1. Never refuse normal fitness/profile requests.
 2. Never say "I can't store personal info".
-3. Never say "I can't help with that" for normal fitness/profile requests.
-4. If the user updates profile info, confirm briefly and continue coaching normally.
-5. If the user asks for a workout plan, give the workout plan immediately.
-6. If the user asks about workout history, answer from workout data if available. If not, say clearly that not enough workout data is available yet.
-7. Do not repeat profile details unless the user explicitly asks for them.
-8. Act like a coach, not a policy bot.
-
-${gymBroSystemPrompt(context)}
+3. Never repeat stored profile info unless the user explicitly asks for it.
+4. If the user greets you, reply naturally in 1 short sentence.
+5. If workout history exists in context, use it.
+6. If workout history does not exist, say that clearly and briefly.
+7. Act like a coach, not a policy bot.
 `;
 
           const messages: OpenAIChatMessage[] = [
-            { role: "system", content: system },
+            { role: "system", content: baseSystemPrompt },
+            { role: "system", content: hardRules },
             ...filteredHistory.map(
               (m) =>
                 ({
@@ -320,7 +314,74 @@ ${gymBroSystemPrompt(context)}
             messages.push({
               role: "system",
               content:
-                "The user is greeting you. Reply naturally in 1-2 short sentences. Do not repeat profile info."
+                "The user is greeting you. Reply naturally in 1 short sentence. Do not repeat profile info."
+            });
+          }
+
+          const lower = userText.toLowerCase();
+
+          const asksTodayPlan =
+            lower.includes("today") ||
+            lower.includes("plan today") ||
+            lower.includes("what is plan today") ||
+            lower.includes("plan for today") ||
+            lower.includes("today workout") ||
+            lower.includes("today we do what") ||
+            lower.includes("practice chest") ||
+            lower.includes("practice back") ||
+            lower.includes("practice legs") ||
+            lower.includes("hôm nay");
+
+          const asksHistory =
+            lower.includes("last week") ||
+            lower.includes("this week") ||
+            lower.includes("last month") ||
+            lower.includes("what i did") ||
+            lower.includes("what did i train") ||
+            lower.includes("report") ||
+            lower.includes("history") ||
+            lower.includes("tuần trước") ||
+            lower.includes("tuần này") ||
+            lower.includes("tháng trước");
+
+          if (asksTodayPlan && !asksHistory) {
+            messages.push({
+              role: "system",
+              content: `
+The user is asking for today's workout plan.
+
+You MUST:
+- give a workout plan immediately
+- use recent workout history to avoid repeating the same muscle group
+- be concise and practical
+
+DO NOT:
+- summarize last week
+- repeat profile info
+- talk about stored profile unless necessary
+
+Just give today's plan.
+`
+            });
+          }
+
+          if (asksHistory) {
+            messages.push({
+              role: "system",
+              content: `
+The user is asking about workout history.
+
+Today is 2026-03-19.
+
+Interpret time ranges like this:
+- "last week" = recent sessions around 2026-03-12 to 2026-03-18
+- "this week" = sessions around 2026-03-17 to 2026-03-19
+- "last month" = recent sessions from the previous few weeks
+
+If workout history context contains sessions in those dates, summarize them directly.
+Do NOT say "I don't have enough workout data" if workout history context is present.
+Do NOT switch to today's plan unless the user asks for a plan.
+`
             });
           }
 
@@ -352,7 +413,9 @@ ${gymBroSystemPrompt(context)}
                   if (typeof args.query === "string" && args.query.trim()) {
                     query = args.query.trim();
                   }
-                } catch {}
+                } catch {
+                  // ignore malformed args
+                }
 
                 send({ type: "tool_start", name: "tavily_search" });
                 const result = await tavilySearch(query);
@@ -383,6 +446,7 @@ ${gymBroSystemPrompt(context)}
                   content: JSON.stringify(result)
                 });
               }
+
               continue;
             }
 
