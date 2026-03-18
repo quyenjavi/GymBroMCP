@@ -64,22 +64,24 @@ export async function loadUserContext({
     .maybeSingle<UserProfileRow>();
 
   const p = profileRes.data;
-  const profileText = p
-    ? [
-        p.display_name ? `name: ${p.display_name}` : null,
-        p.gender ? `gender: ${p.gender}` : null,
-        typeof p.age === "number" ? `age: ${p.age}` : null,
-        typeof p.height_cm === "number" ? `height_cm: ${p.height_cm}` : null,
-        typeof p.weight_kg === "number" ? `weight_kg: ${p.weight_kg}` : null,
-        p.fitness_goal ? `fitness_goal: ${p.fitness_goal}` : null,
-        p.fitness_level ? `fitness_level: ${p.fitness_level}` : null,
-        p.preferred_split ? `preferred_split: ${p.preferred_split}` : null,
-        typeof p.training_days_per_week === "number" ? `days_per_week: ${p.training_days_per_week}` : null,
-        p.notes ? `notes: ${p.notes}` : null
-      ]
-        .filter((x): x is string => Boolean(x))
-        .join("\n")
-    : "";
+const profileText = p
+  ? [
+      p.display_name ? `User name is ${p.display_name}` : null,
+      p.gender ? `Gender is ${p.gender}` : null,
+      typeof p.age === "number" ? `Age is ${p.age}` : null,
+      typeof p.height_cm === "number" ? `Height is ${p.height_cm} cm` : null,
+      typeof p.weight_kg === "number" ? `Weight is ${p.weight_kg} kg` : null,
+      p.fitness_goal ? `Goal is ${p.fitness_goal}` : null,
+      p.fitness_level ? `Fitness level is ${p.fitness_level}` : null,
+      p.preferred_split ? `Preferred split is ${p.preferred_split}` : null,
+      typeof p.training_days_per_week === "number"
+        ? `Training frequency is ${p.training_days_per_week} days per week`
+        : null,
+      p.notes ? `Notes: ${p.notes}` : null
+    ]
+      .filter((x): x is string => Boolean(x))
+      .join(". ")
+  : "";
 
   const memoriesRes = await supabase
     .from("user_memories")
