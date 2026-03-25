@@ -21,6 +21,30 @@ export default function ChatWindow({
   return (
     <div className="flex-1 overflow-y-auto">
       <div className="space-y-4 py-6">
+        {messages.length === 0 ? (
+          <div className="mx-auto w-full max-w-3xl px-4">
+            <div className="rounded-2xl border border-zinc-800 bg-zinc-900/30 p-6">
+              <div className="text-base font-semibold tracking-tight text-zinc-100">Ready to start</div>
+              <div className="mt-2 text-sm text-zinc-400">
+                Type start, plan today, report last week, or log sets like 40x10x3.
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="rounded-full bg-zinc-950/50 px-3 py-1 text-xs text-zinc-300 ring-1 ring-zinc-800">
+                  start
+                </span>
+                <span className="rounded-full bg-zinc-950/50 px-3 py-1 text-xs text-zinc-300 ring-1 ring-zinc-800">
+                  plan today
+                </span>
+                <span className="rounded-full bg-zinc-950/50 px-3 py-1 text-xs text-zinc-300 ring-1 ring-zinc-800">
+                  report last week
+                </span>
+                <span className="rounded-full bg-zinc-950/50 px-3 py-1 text-xs text-zinc-300 ring-1 ring-zinc-800">
+                  body metrics
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : null}
         {messages.map((m) => (
           <MessageBubble key={m.id} message={m} />
         ))}

@@ -7,3 +7,9 @@ export type ChatMessage = {
   created_at?: string;
   tool_name?: string | null;
 };
+
+export type StreamEvent =
+  | { type: "tool_start"; name: string }
+  | { type: "tool_end"; name: string }
+  | { type: "assistant"; content: string }
+  | { type: "error"; message: string };

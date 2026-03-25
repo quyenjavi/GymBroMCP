@@ -4,9 +4,13 @@ export type OpenAIToolCall = {
   function: { name: string; arguments: string };
 };
 
+export type OpenAIContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
+
 export type OpenAIChatMessage =
   | { role: "system"; content: string }
-  | { role: "user"; content: string }
+  | { role: "user"; content: string | OpenAIContentPart[] }
   | { role: "assistant"; content: string; tool_calls?: OpenAIToolCall[] }
   | { role: "tool"; content: string; tool_call_id: string };
 

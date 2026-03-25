@@ -22,12 +22,13 @@ type WorkoutSessionRow = {
 type WorkoutExerciseRow = {
   id: string;
   session_id: string;
-  name: string | null;
+  exercise_name: string | null;
+  muscle_group: string | null;
 };
 
 type WorkoutSetRow = {
   exercise_id: string;
-  weight: number | null;
+  weight_kg: number | null;
   reps: number | null;
 };
 
@@ -88,7 +89,7 @@ export async function loadUserContext({
     sessionIds.length > 0
       ? await supabase
           .from("workout_exercises")
-          .select("id, session_id, name")
+          .select("id, session_id, exercise_name, muscle_group")
           .in("session_id", sessionIds)
           .returns<WorkoutExerciseRow[]>()
       : null;
@@ -100,7 +101,7 @@ export async function loadUserContext({
     exerciseIds.length > 0
       ? await supabase
           .from("workout_sets")
-          .select("exercise_id, weight, reps")
+          .select("exercise_id, weight_kg, reps")
           .in("exercise_id", exerciseIds)
           .returns<WorkoutSetRow[]>()
       : null;
@@ -122,7 +123,7 @@ export async function loadUserContext({
   }
 
   const recentWorkoutsText =
-  sessions.length > 0
+    sessions.length > 0
     ? [
         "Recent workout history (latest sessions first):",
         ...sessions.map((s) => {
@@ -133,7 +134,7 @@ export async function loadUserContext({
           const sessionExercises = exercisesBySession.get(s.id) || [];
           for (const ex of sessionExercises) {
             const setStrings = (setsByExercise.get(ex.id) || []).map((set) => {
-              const w = typeof set.weight === "number" ? `${set.weight}` : "";
+              const w = typeof set.weight_kg === "number" ? `${set.weight_kg}` : "";
               const r = typeof set.reps === "number" ? `${set.reps}` : "";
               if (w && r) return `${w}x${r}`;
               if (r) return `${r} reps`;
@@ -141,7 +142,7 @@ export async function loadUserContext({
             });
 
             lines.push(
-              `- ${ex.name || "Exercise"}${setStrings.length ? `: ${setStrings.join(", ")}` : ""}`
+              `- ${ex.exercise_name || "Exercise"}${setStrings.length ? `: ${setStrings.join(", ")}` : ""}`
             );
           }
 

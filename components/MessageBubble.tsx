@@ -1,11 +1,13 @@
 "use client";
 
 import type { ChatMessage } from "../lib/types";
+import StructuredAssistantMessage from "./StructuredAssistantMessage";
 
 export default function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
   const isTool = message.role === "tool";
   const isSystem = message.role === "system";
+  const isAssistant = message.role === "assistant";
 
   if (isTool || isSystem) {
     return (
@@ -24,10 +26,10 @@ export default function MessageBubble({ message }: { message: ChatMessage }) {
           className={
             isUser
               ? "max-w-[85%] whitespace-pre-wrap rounded-2xl bg-zinc-100 px-4 py-2 text-sm text-zinc-950"
-              : "max-w-[85%] whitespace-pre-wrap rounded-2xl border border-zinc-800 bg-zinc-900/40 px-4 py-2 text-sm text-zinc-100"
+              : "w-full max-w-[95%] rounded-2xl border border-zinc-800 bg-zinc-900/40 px-4 py-3 text-sm text-zinc-100"
           }
         >
-          {message.content}
+          {isAssistant ? <StructuredAssistantMessage content={message.content} /> : message.content}
         </div>
       </div>
     </div>
